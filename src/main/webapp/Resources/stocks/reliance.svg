@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <rect width="48" height="48" rx="12" fill="#003580"/>
+  <text x="24" y="29" font-family="'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="900" fill="#e8ba3b" text-anchor="middle" letter-spacing="0.5">RIL</text>
+  <path d="M12 36 L24 33 L36 36" stroke="#e8ba3b" stroke-width="2" stroke-linecap="round"/>
+</svg>

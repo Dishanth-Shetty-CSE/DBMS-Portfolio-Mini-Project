@@ -1,497 +1,524 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ page import="java.sql.*" %>
+<%@ page import="java.text.DecimalFormat" %>
+<%
+    String swalStatus = "";
+    String swalTitle = "";
+    String swalMessage = "";
+
+    // Handle Add Signal (POST without stock_id)
+    if ("POST".equals(request.getMethod()) && request.getParameter("adx") != null && request.getParameter("volume") != null && request.getParameter("macd") != null && request.getParameter("cid") != null && request.getParameter("stock_id") == null) {
+        try {
+            double adx = Double.parseDouble(request.getParameter("adx"));
+            int volume = Integer.parseInt(request.getParameter("volume"));
+            double macd = Double.parseDouble(request.getParameter("macd"));
+            int cid = Integer.parseInt(request.getParameter("cid"));
+
+            Connection connIns = null;
+            PreparedStatement psIns = null;
+            try {
+                String url = "jdbc:mysql://localhost:3306/FINANCIAL_DB";
+                String user = "root";
+                String pass = "trickortreat";
+                Class.forName("com.mysql.cj.jdbc.Driver");
+                connIns = DriverManager.getConnection(url, user, pass);
+                String sql = "INSERT INTO TECHNICAL_SIGNALS (ADX, VOLUME, MACD, CID) VALUES (?, ?, ?, ?)";
+                psIns = connIns.prepareStatement(sql);
+                psIns.setDouble(1, adx);
+                psIns.setInt(2, volume);
+                psIns.setDouble(3, macd);
+                psIns.setInt(4, cid);
+                int rows = psIns.executeUpdate();
+                if (rows > 0) {
+                    swalStatus = "success";
+                    swalTitle = "Success";
+                    swalMessage = "Technical signal registered successfully!";
+                } else {
+                    swalStatus = "error";
+                    swalTitle = "Failed";
+                    swalMessage = "Failed to register signal.";
+                }
+            } catch (Exception e) {
+                swalStatus = "error";
+                swalTitle = "Error";
+                swalMessage = e.getMessage();
+            } finally {
+                if (psIns != null) psIns.close();
+                if (connIns != null) connIns.close();
+            }
+        } catch(NumberFormatException e) {
+            swalStatus = "error";
+            swalTitle = "Invalid Format";
+            swalMessage = "Invalid numerical format in inputs.";
+        }
+    }
+
+    // Handle Update Signal (POST with stock_id)
+    if ("POST".equals(request.getMethod()) && request.getParameter("adx") != null && request.getParameter("volume") != null && request.getParameter("macd") != null && request.getParameter("cid") != null && request.getParameter("stock_id") != null) {
+        try {
+            int stockId = Integer.parseInt(request.getParameter("stock_id"));
+            double adx = Double.parseDouble(request.getParameter("adx"));
+            int volume = Integer.parseInt(request.getParameter("volume"));
+            double macd = Double.parseDouble(request.getParameter("macd"));
+            int cid = Integer.parseInt(request.getParameter("cid"));
+
+            Connection connUp = null;
+            PreparedStatement psUp = null;
+            try {
+                String url = "jdbc:mysql://localhost:3306/FINANCIAL_DB";
+                String user = "root";
+                String pass = "trickortreat";
+                Class.forName("com.mysql.cj.jdbc.Driver");
+                connUp = DriverManager.getConnection(url, user, pass);
+                String sql = "UPDATE TECHNICAL_SIGNALS SET ADX = ?, VOLUME = ?, MACD = ?, CID = ? WHERE STOCK_ID = ?";
+                psUp = connUp.prepareStatement(sql);
+                psUp.setDouble(1, adx);
+                psUp.setInt(2, volume);
+                psUp.setDouble(3, macd);
+                psUp.setInt(4, cid);
+                psUp.setInt(5, stockId);
+                int rows = psUp.executeUpdate();
+                if (rows > 0) {
+                    swalStatus = "success";
+                    swalTitle = "Success";
+                    swalMessage = "Signal updated successfully!";
+                } else {
+                    swalStatus = "error";
+                    swalTitle = "Failed";
+                    swalMessage = "Failed to update signal.";
+                }
+            } catch (Exception e) {
+                swalStatus = "error";
+                swalTitle = "Error";
+                swalMessage = e.getMessage();
+            } finally {
+                if (psUp != null) psUp.close();
+                if (connUp != null) connUp.close();
+            }
+        } catch(NumberFormatException e) {
+            swalStatus = "error";
+            swalTitle = "Invalid Format";
+            swalMessage = "Invalid numerical format in inputs.";
+        }
+    }
+
+    // Handle Delete Signal (GET with action=delete)
+    if ("GET".equals(request.getMethod()) && "delete".equals(request.getParameter("action")) && request.getParameter("stock_id") != null) {
+        int stockId = Integer.parseInt(request.getParameter("stock_id"));
+        Connection connDel = null;
+        PreparedStatement psDel = null;
+        try {
+            String url = "jdbc:mysql://localhost:3306/FINANCIAL_DB";
+            String user = "root";
+            String pass = "trickortreat";
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            connDel = DriverManager.getConnection(url, user, pass);
+            String sql = "DELETE FROM TECHNICAL_SIGNALS WHERE STOCK_ID = ?";
+            psDel = connDel.prepareStatement(sql);
+            psDel.setInt(1, stockId);
+            int rows = psDel.executeUpdate();
+            if (rows > 0) {
+                swalStatus = "success";
+                swalTitle = "Deleted";
+                swalMessage = "Technical signal removed successfully.";
+            } else {
+                swalStatus = "error";
+                swalTitle = "Failed";
+                swalMessage = "Failed to delete signal.";
+            }
+        } catch (Exception e) {
+            swalStatus = "error";
+            swalTitle = "Error";
+            swalMessage = e.getMessage();
+        } finally {
+            if (psDel != null) psDel.close();
+            if (connDel != null) connDel.close();
+        }
+    }
+
+    boolean isUpdateSig = false;
+    int updateStockId = -1;
+    double updateAdx = 0.0;
+    int updateVolume = 0;
+    double updateMacd = 0.0;
+    int updateSigCid = 0;
+
+    // Handle Update View Mode (GET)
+    if ("GET".equals(request.getMethod()) && "update".equals(request.getParameter("action")) && request.getParameter("stock_id") != null) {
+        try {
+            updateStockId = Integer.parseInt(request.getParameter("stock_id"));
+            Connection connGet = null;
+            PreparedStatement psGet = null;
+            try {
+                String url = "jdbc:mysql://localhost:3306/FINANCIAL_DB";
+                String user = "root";
+                String pass = "trickortreat";
+                Class.forName("com.mysql.cj.jdbc.Driver");
+                connGet = DriverManager.getConnection(url, user, pass);
+                psGet = connGet.prepareStatement("SELECT ADX, VOLUME, MACD, CID FROM TECHNICAL_SIGNALS WHERE STOCK_ID = ?");
+                psGet.setInt(1, updateStockId);
+                ResultSet rsGet = psGet.executeQuery();
+                if (rsGet.next()) {
+                    isUpdateSig = true;
+                    updateAdx = rsGet.getDouble("ADX");
+                    updateVolume = rsGet.getInt("VOLUME");
+                    updateMacd = rsGet.getDouble("MACD");
+                    updateSigCid = rsGet.getInt("CID");
+                }
+                rsGet.close();
+            } finally {
+                if (psGet != null) psGet.close();
+                if (connGet != null) connGet.close();
+            }
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
+    }
+%>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Manage Technical Signals - Financial Portfolio Manager</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Technical Signals - FinManage Admin</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="Resources/fintech-theme.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <style>
-        body {
-            font-family: 'Poppins', sans-serif;
-            background-color: #f2f2f2;
-            margin: 0;
-            padding: 0;
-        }
-        .header {
-            background-color: #00274D;
-            color: white;
-            padding: 15px;
-        }
-        .section-title {
-            margin-top: 40px;
-            margin-bottom: 20px;
-            color: #00274D;
-            font-weight: 600;
-        }
-        .table-container {
-            margin-top: 20px;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-            text-align: center;
-        }
-        .table-responsive {
-            overflow-x: auto;
-            margin-bottom: 20px;
-        }
-        .table {
-            width: 80%;
-            border-collapse: collapse;
-            background-color: white;
-            margin: 0 auto;
-        }
-        .table thead th {
-            background-color: #f8f9fa;
-            color: #00274D;
-            padding: 12px;
-            text-align: left;
-            border-bottom: 2px solid #dee2e6;
-        }
-        .table tbody tr:nth-child(odd) {
-            background-color: #f2f2f2;
-        }
-        .table tbody tr:hover {
-            background-color: #e0e0e0;
-        }
-        .table td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #dee2e6;
-        }
-        .table th, .table td {
-            border-right: 1px solid #dee2e6;
-        }
-        .table th:last-child, .table td:last-child {
-            border-right: none;
-        }
-        .no-data-message {
-            text-align: center;
-            padding: 20px;
-            background-color: #fff;
-            border-radius: 10px;
-            margin-top: 20px;
-            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.05);
-            color: #6c757d;
-        }
-        footer {
-            background-color: #00274D;
-            color: white;
-            text-align: center;
-            padding: 15px;
-            margin-top: 40px;
-        }
-        .action-btn {
-            padding: 8px 16px;
-            border-radius: 5px;
-            transition: background-color 0.3s;
-            color: white;
-            text-decoration: none;
-        }
-        .update-btn {
-            background-color: #007bff;
-            color: #fff;
-        }
-        .update-btn:hover {
-            background-color: #0056b3;
-            color: #fff;
-        }
-
-        .delete-btn {
-            background-color: #dc3545;
-        }
-        .delete-btn:hover {
-            background-color: #c82333;
-        }
-        .add-btn {
-            background-color: #28a745;
-            color: #fff;
-        }
-        .add-btn:hover {
-            background-color: #218838;
-            color: #fff;
-        }
-        .text-center.mt-4 {
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            margin-bottom: 10px;
-        }
-        .error-message {
-            color: red;
-            font-size: 0.8rem;
-        }
-
-    </style>
 </head>
-<body>
+<body style="background-color: #f8fafc;">
 
-<div class="header">
-    <h2>Manage Technical Signals</h2>
-</div>
-
-<div class="container mt-4">
-    <h4 class="section-title">Technical Signal List</h4>
-
-    <form action="manage-signals.jsp" method="POST" class="mb-4">
-        <h5>Add New Signal</h5>
-        <input type="number" name="adx" id="adx" placeholder="ADX" class="form-control mb-2"  required>
-        <div  class="error-message">
-            <% if (request.getAttribute("adxError") != null) { %>
-                <%= request.getAttribute("adxError") %>
-            <% } %>
+    <!-- ADMIN NAVBAR -->
+    <nav class="navbar navbar-expand-lg fin-navbar" style="background: #0f172a; border-bottom: 1px solid rgba(245, 158, 11, 0.2);">
+        <div class="container-fluid px-lg-4">
+            <a class="fin-brand" href="admin-dashboard.jsp">
+                <div class="fin-brand-logo" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                    <i class="bi bi-shield-lock-fill"></i>
+                </div>
+                <div class="fin-brand-name">
+                    <span>FinManage</span>
+                    <span class="fin-brand-sub" style="color: #f59e0b;">SIGNALS CONTROL</span>
+                </div>
+            </a>
+            <button class="navbar-toggler border-0 text-white" type="button" data-bs-toggle="collapse" data-bs-target="#adminSigNav">
+                <i class="bi bi-list fs-2"></i>
+            </button>
+            <div class="collapse navbar-collapse" id="adminSigNav">
+                <ul class="navbar-nav ms-auto align-items-center gap-1">
+                    <li class="nav-item"><a class="fin-nav-link" href="admin-dashboard.jsp"><i class="bi bi-speedometer2"></i> Overview</a></li>
+                    <li class="nav-item"><a class="fin-nav-link" href="manage-users.jsp"><i class="bi bi-people"></i> Users</a></li>
+                    <li class="nav-item"><a class="fin-nav-link" href="manage-companies.jsp"><i class="bi bi-buildings"></i> Companies</a></li>
+                    <li class="nav-item"><a class="fin-nav-link" href="manage-reports.jsp"><i class="bi bi-file-earmark-text"></i> Reports</a></li>
+                    <li class="nav-item"><a class="fin-nav-link active" href="manage-signals.jsp"><i class="bi bi-activity"></i> Signals</a></li>
+                    <li class="nav-item"><a class="fin-nav-link" href="manage-transactions.jsp"><i class="bi bi-clock-history"></i> Orders</a></li>
+                    <li class="nav-item ms-lg-2">
+                        <a href="javascript:void(0)" id="adminLogoutBtn" class="fin-btn-logout"><i class="bi bi-box-arrow-right"></i> Logout</a>
+                    </li>
+                </ul>
+            </div>
         </div>
-        <input type="number" name="volume" id="volume" placeholder="Volume" class="form-control mb-2"   required>
-         <div  class="error-message">
-            <% if (request.getAttribute("volumeError") != null) { %>
-                <%= request.getAttribute("volumeError") %>
-            <% } %>
-        </div>
-        <input type="number" name="macd" id="macd" placeholder="MACD" class="form-control mb-2"   required>
-        <div  class="error-message">
-            <% if (request.getAttribute("macdError") != null) { %>
-                <%= request.getAttribute("macdError") %>
-            <% } %>
-        </div>
-        <input type="number" name="cid" id="cid" placeholder="Company ID" class="form-control mb-2" required>
-        <div  class="error-message">
-            <% if (request.getAttribute("cidError") != null) { %>
-                <%= request.getAttribute("cidError") %>
-            <% } %>
-        </div>
-        <button type="submit" class="btn btn-success add-btn">Add Signal</button>
-    </form>
+    </nav>
 
-    <%
-    String message = (String) request.getAttribute("message");
-    if (message != null && !message.isEmpty()) {
-        if (message.startsWith("Success")) {
-            String sweetAlertMessage = message.substring(8);
-            out.println("<script>Swal.fire('Success', '" + sweetAlertMessage + "', 'success').then(function() {");
-            out.println("  window.location.href = 'manage-signals.jsp';");
-            out.println("});</script>");
-        } else if (message.startsWith("Error")) {
-            String sweetAlertMessage = message.substring(6);
-            out.println("<script>Swal.fire('Error', '" + sweetAlertMessage + "', 'error');</script>");
-        }
-    }
-    %>
+    <!-- CONTENT -->
+    <div class="container-fluid px-lg-4 py-4">
 
-    <div class="table-container">
-        <div class="table-responsive">
-            <table class="table table-striped table-hover">
-                <thead>
-                    <tr>
-                        <th>Stock ID</th>
-                        <th>ADX</th>
-                        <th>Volume</th>
-                        <th>MACD</th>
-                        <th>Company ID</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <%
-                    Connection conn = null;
-                    Statement st = null;
-                    ResultSet rs = null;
-                    try {
-                        String url = "jdbc:mysql://localhost:3306/FINANCIAL_DB";
-                        String user = "root";
-                        String pass = "trickortreat";
-                        Class.forName("com.mysql.cj.jdbc.Driver");
-                        conn = DriverManager.getConnection(url, user, pass);
-                        st = conn.createStatement();
-                        String sql = "SELECT STOCK_ID, ADX, VOLUME, MACD, CID FROM TECHNICAL_SIGNALS";
-                        rs = st.executeQuery(sql);
-
-                        if (!rs.isBeforeFirst()) {
-                            out.println("<tr><td colspan='6' class='no-data-message'>No technical signals found.</td></tr>");
-                        } else {
-                            while (rs.next()) {
-                                int stockId = rs.getInt("STOCK_ID");
-                                double adx = rs.getDouble("ADX");
-                                int volume = rs.getInt("VOLUME");
-                                double macd = rs.getDouble("MACD");
-                                int cid = rs.getInt("CID");
-                    %>
-                    <tr>
-                        <td><%= stockId %></td>
-                        <td><%= adx %></td>
-                        <td><%= volume %></td>
-                        <td><%= macd %></td>
-                        <td><%= cid %></td>
-                        <td>
-                            <a href="manage-signals.jsp?stockId=<%= stockId %>&action=update" class="btn btn-warning update-btn">Update</a>
-                            <a href="#" class="btn btn-danger delete-btn" onclick="showDeleteConfirmation(<%= stockId %>)">Delete</a>
-                        </td>
-                    </tr>
-                    <%
-                            }
-                        }
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        request.setAttribute("message", "Error: " + e.getMessage());
-                        out.println("<script>Swal.fire('Error', 'Error retrieving data: " + e.getMessage() + "', 'error');</script>");
-
-                    } finally {
-                        try {
-                            if (rs != null) rs.close();
-                            if (st != null) st.close();
-                            if (conn != null) conn.close();
-                        } catch (SQLException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                    %>
-                </tbody>
-            </table>
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center flex-wrap mb-4">
+            <div>
+                <h3 class="fw-bold mb-1 text-dark">
+                    <i class="bi bi-sliders text-primary me-2"></i>Technical Signals & Indicators Management
+                </h3>
+                <p class="text-muted small mb-0">Configure Average Directional Index (ADX), trading volume, and MACD indicators.</p>
+            </div>
+            <div class="mt-3 mt-md-0 d-flex gap-2">
+                <a href="admin-dashboard.jsp" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Admin Console
+                </a>
+            </div>
         </div>
+
+        <div class="row g-4">
+            <!-- Add / Update Form Column -->
+            <div class="col-lg-4">
+                <div class="fin-card">
+                    <div class="fin-card-header <%= isUpdateSig ? "bg-warning-subtle" : "" %>">
+                        <h5 class="fin-card-title">
+                            <i class="bi <%= isUpdateSig ? "bi-pencil-square text-warning" : "bi-plus-circle-fill text-success" %>"></i>
+                            <%= isUpdateSig ? "Update Technical Signal" : "Add Technical Signal" %>
+                        </h5>
+                    </div>
+                    <div class="fin-card-body">
+                        <form id="signalManageForm" action="manage-signals.jsp" method="POST" novalidate>
+                            <% if (isUpdateSig) { %>
+                                <input type="hidden" name="stock_id" value="<%= updateStockId %>">
+                            <% } %>
+
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-secondary">ADX (Trend Strength Indicator)</label>
+                                <input type="number" step="0.01" name="adx" id="adx" class="form-control fin-input" 
+                                       placeholder="e.g. 26.50" 
+                                       value="<%= isUpdateSig ? updateAdx : "" %>" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-secondary">Trading Volume (Shares)</label>
+                                <input type="number" name="volume" id="volume" class="form-control fin-input" 
+                                       placeholder="e.g. 15000" 
+                                       value="<%= isUpdateSig ? updateVolume : "" %>" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-secondary">MACD (Momentum Indicator)</label>
+                                <input type="number" step="0.01" name="macd" id="macd" class="form-control fin-input" 
+                                       placeholder="e.g. 32.40" 
+                                       value="<%= isUpdateSig ? updateMacd : "" %>" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold text-secondary">Company ID (CID)</label>
+                                <input type="number" name="cid" id="cid" class="form-control fin-input" 
+                                       placeholder="e.g. 1" 
+                                       value="<%= isUpdateSig ? updateSigCid : "" %>" required>
+                            </div>
+
+                            <div class="d-flex gap-2 mt-4">
+                                <% if (isUpdateSig) { %>
+                                    <button type="submit" class="fin-btn fin-btn-primary flex-fill">
+                                        <i class="bi bi-check2-circle"></i> Save Signal
+                                    </button>
+                                    <a href="manage-signals.jsp" class="btn btn-outline-secondary">Cancel</a>
+                                <% } else { %>
+                                    <button type="submit" class="fin-btn fin-btn-emerald w-100">
+                                        <i class="bi bi-plus-lg"></i> Register Signal
+                                    </button>
+                                <% } %>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table Column -->
+            <div class="col-lg-8">
+                <div class="fin-card">
+                    <div class="fin-card-header">
+                        <h5 class="fin-card-title">
+                            <i class="bi bi-table text-primary"></i> Configured Technical Signals
+                        </h5>
+                        <div class="input-group" style="width: 220px;">
+                            <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                            <input type="text" id="sigTableSearch" class="form-control form-control-sm border-start-0" placeholder="Filter table...">
+                        </div>
+                    </div>
+                    <div class="fin-card-body p-0">
+                        <div class="table-responsive">
+                            <table class="fin-table" id="signalsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Signal ID</th>
+                                        <th>Company</th>
+                                        <th class="text-center">ADX</th>
+                                        <th class="text-end">Volume</th>
+                                        <th class="text-center">MACD</th>
+                                        <th class="text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <%
+                                        DecimalFormat df = new DecimalFormat("#,##0.00");
+                                        DecimalFormat dfInt = new DecimalFormat("#,##0");
+                                        Connection conn = null;
+                                        Statement st = null;
+                                        ResultSet rs = null;
+                                        try {
+                                            String url = "jdbc:mysql://localhost:3306/FINANCIAL_DB";
+                                            String user = "root";
+                                            String pass = "trickortreat";
+                                            Class.forName("com.mysql.cj.jdbc.Driver");
+                                            conn = DriverManager.getConnection(url, user, pass);
+                                            st = conn.createStatement();
+                                            String sql = "SELECT t.STOCK_ID, t.ADX, t.VOLUME, t.MACD, c.CNAME, t.CID FROM TECHNICAL_SIGNALS t JOIN COMPANY c ON t.CID = c.CID ORDER BY t.STOCK_ID ASC";
+                                            rs = st.executeQuery(sql);
+
+                                            if (!rs.isBeforeFirst()) {
+                                                out.println("<tr class='no-data-row'><td colspan='6' class='text-center py-4 text-muted'>No technical signals found.</td></tr>");
+                                            } else {
+                                                while (rs.next()) {
+                                                    int sid = rs.getInt("STOCK_ID");
+                                                    double adx = rs.getDouble("ADX");
+                                                    int volume = rs.getInt("VOLUME");
+                                                    double macd = rs.getDouble("MACD");
+                                                    String cname = rs.getString("CNAME");
+                                    %>
+                                    <tr>
+                                        <td class="text-mono text-muted">#SIG-<%= sid %></td>
+                                        <td class="fw-bold"><%= cname %></td>
+                                        <td class="text-center">
+                                            <span class="badge bg-primary-subtle text-primary text-mono"><%= df.format(adx) %></span>
+                                        </td>
+                                        <td class="text-end text-mono fw-bold"><%= dfInt.format(volume) %></td>
+                                        <td class="text-center">
+                                            <span class="badge bg-success-subtle text-success text-mono"><%= df.format(macd) %></span>
+                                        </td>
+                                        <td class="text-center">
+                                            <a href="manage-signals.jsp?stock_id=<%= sid %>&action=update" class="btn btn-sm btn-outline-primary me-1">
+                                                <i class="bi bi-pencil"></i> Edit
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-outline-danger btn-delete-sig" data-id="<%= sid %>">
+                                                <i class="bi bi-trash"></i> Delete
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    <%
+                                                }
+                                            }
+                                        } catch (Exception e) {
+                                            out.println("<tr><td colspan='6' class='text-danger text-center'>Error: " + e.getMessage() + "</td></tr>");
+                                        } finally {
+                                            try {
+                                                if (rs != null) rs.close();
+                                                if (st != null) st.close();
+                                                if (conn != null) conn.close();
+                                            } catch (SQLException e) {
+                                                e.printStackTrace();
+                                            }
+                                        }
+                                    %>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <% if (!swalStatus.isEmpty()) { %>
+            <div id="swalFeedback" 
+                 data-status="<%= swalStatus %>" 
+                 data-title="<%= swalTitle %>" 
+                 data-message="<%= swalMessage %>" 
+                 data-redirect="manage-signals.jsp" 
+                 style="display:none;"></div>
+        <% } %>
+
     </div>
 
-   <%
-if ("POST".equals(request.getMethod())) {
-    String adxStr = request.getParameter("adx");
-    String volumeStr = request.getParameter("volume");
-    String macdStr = request.getParameter("macd");
-    String cidStr = request.getParameter("cid");
-    boolean hasErrors = false;
+    <!-- FOOTER -->
+    <footer class="fin-footer mt-5">
+        <div class="container text-center">
+            <p class="mb-1 text-muted">&copy; 2026 Financial Portfolio Management System. All Rights Reserved.</p>
+            <p class="small text-secondary mb-0">Technical Signals Entity Manager • Connected to MySQL (FINANCIAL_DB)</p>
+        </div>
+    </footer>
 
-    // Reset error attributes
-    request.setAttribute("adxError", null);
-    request.setAttribute("volumeError", null);
-    request.setAttribute("macdError", null);
-    request.setAttribute("cidError", null);
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="Resources/fintech-charts.js"></script>
+    <script>
+        FinTechApp.filterTable('sigTableSearch', 'signalsTable');
 
-     if (adxStr == null || adxStr.trim().isEmpty() || !adxStr.matches("\\d{0,10}(\\.\\d{0,2})?")) {
-        request.setAttribute("adxError", "Please enter a valid ADX (max 10 digits before and 2 after decimal).");
-        hasErrors = true;
-    }
+        document.addEventListener('DOMContentLoaded', function () {
+            // Delete confirmation handlers
+            document.querySelectorAll('.btn-delete-sig').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const id = this.getAttribute('data-id');
+                    showDeleteConfirmation(id);
+                });
+            });
 
-    if (volumeStr == null || volumeStr.trim().isEmpty() || !volumeStr.matches("\\d+")) {
-        request.setAttribute("volumeError", "Please enter a valid Volume (must be an integer).");
-        hasErrors = true;
-    }
-
-    if (macdStr == null || macdStr.trim().isEmpty() || !macdStr.matches("\\d{0,10}(\\.\\d{0,2})?")) {
-        request.setAttribute("macdError", "Please enter a valid MACD (max 10 digits before and 2 after decimal).");
-        hasErrors = true;
-    }
-
-
-    if (cidStr == null || cidStr.trim().isEmpty()) {
-        request.setAttribute("cidError", "Please enter the Company ID.");
-        hasErrors = true;
-    }else{
-        try{
-             Integer.parseInt(cidStr);
-        }catch(NumberFormatException e){
-             request.setAttribute("cidError", "Please enter a valid Company ID (number).");
-             hasErrors = true;
-        }
-    }
-
-    if (hasErrors) {
-        // Forward back to the form with error messages
-        request.getRequestDispatcher("manage-signals.jsp").forward(request, response);
-        return;
-    }
-
-
-    //try catch block for parsing
-    try{
-        double adx = Double.parseDouble(adxStr);
-        int volume = Integer.parseInt(volumeStr);
-        double macd = Double.parseDouble(macdStr);
-        int cid = Integer.parseInt(cidStr);
-        Connection connInsert = null;
-        PreparedStatement ps = null;
-
-        try {
-            String url = "jdbc:mysql://localhost:3306/FINANCIAL_DB";
-            String user = "root";
-            String pass = "trickortreat";
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            connInsert = DriverManager.getConnection(url, user, pass);
-            String sql;
-             if (request.getParameter("stockId") == null || request.getParameter("stockId").isEmpty()) {
-                sql = "INSERT INTO TECHNICAL_SIGNALS (ADX, VOLUME, MACD, CID) VALUES (?, ?, ?, ?)";
-                ps = connInsert.prepareStatement(sql);
-                ps.setDouble(1, adx);
-                ps.setInt(2, volume);
-                ps.setDouble(3, macd);
-                ps.setInt(4, cid);
-             }else{
-                int stockId = Integer.parseInt(request.getParameter("stockId"));
-                sql = "UPDATE TECHNICAL_SIGNALS SET ADX = ?, VOLUME = ?, MACD = ?, CID = ? WHERE STOCK_ID = ?";
-                ps = connInsert.prepareStatement(sql);
-                ps.setDouble(1, adx);
-                ps.setInt(2, volume);
-                ps.setDouble(3, macd);
-                ps.setInt(4, cid);
-                ps.setInt(5, stockId);
-             }
-
-
-
-            int rowsAffected = ps.executeUpdate();
-            if (rowsAffected > 0) {
-                String messageType = (request.getParameter("stockId") == null || request.getParameter("stockId").isEmpty()) ? "Added" : "Updated";
-                out.println("<script>Swal.fire('Success', 'Technical Signal " + messageType + " successfully!', 'success').then(() => { window.location.href = 'manage-signals.jsp'; });</script>");
-                return;
-            } else {
-                String messageType = (request.getParameter("stockId") == null || request.getParameter("stockId").isEmpty()) ? "add" : "update";
-                request.setAttribute("message", "Error: Failed to " + messageType + " technical signal.");
-                out.println("<script>Swal.fire('Error', 'Failed to " + messageType + " technical signal!', 'error');</script>");
+            // Logout handler
+            const logoutBtn = document.getElementById('adminLogoutBtn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', function () {
+                    FinTechApp.confirmAction(
+                        'Administrator Sign Out',
+                        'Are you sure you want to sign out?',
+                        'Yes, Sign Out',
+                        function () { window.location.href = 'admin-login.jsp'; },
+                        'warning'
+                    );
+                });
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-            request.setAttribute("message", "Error: " + e.getMessage());
-            out.println("<script>Swal.fire('Error', 'Error: " + e.getMessage() + "', 'error');</script>");
-        } finally {
-            try {
-                if (ps != null) ps.close();
-                if (connInsert != null) connInsert.close();
-            } catch (SQLException e) {
-                e.printStackTrace();
+
+            // Signal form validation & confirmation
+            const form = document.getElementById('signalManageForm');
+            if (form) {
+                FinTechApp.bindLiveValidation(form);
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    const adx = document.getElementById('adx');
+                    const vol = document.getElementById('volume');
+                    const macd = document.getElementById('macd');
+                    const cid = document.getElementById('cid');
+
+                    FinTechApp.clearError(adx);
+                    FinTechApp.clearError(vol);
+                    FinTechApp.clearError(macd);
+                    FinTechApp.clearError(cid);
+
+                    let isValid = true;
+                    if (!adx.value || parseFloat(adx.value) <= 0) {
+                        FinTechApp.showError(adx, 'ADX must be greater than 0.');
+                        isValid = false;
+                    }
+                    if (!vol.value || parseInt(vol.value, 10) <= 0) {
+                        FinTechApp.showError(vol, 'Trading volume must be at least 1.');
+                        isValid = false;
+                    }
+                    if (!macd.value) {
+                        FinTechApp.showError(macd, 'MACD value is required.');
+                        isValid = false;
+                    }
+                    if (!cid.value || parseInt(cid.value, 10) <= 0) {
+                        FinTechApp.showError(cid, 'Valid Company ID is required.');
+                        isValid = false;
+                    }
+
+                    if (isValid) {
+                        FinTechApp.confirmAction(
+                            'Save Technical Signal?',
+                            'Are you sure you want to save these indicator metrics?',
+                            'Yes, Save',
+                            function () { form.submit(); },
+                            'question'
+                        );
+                    }
+                });
             }
-        }
-    }catch(NumberFormatException e){
-        e.printStackTrace();
-        request.setAttribute("message", "Error: Invalid input format. Please enter a valid number.");
-        out.println("<script>Swal.fire('Error', 'Invalid input format. Please enter a valid number.', 'error');</script>");
-    }
-}
 
-// Handle Delete report (GET)
-if ("GET".equals(request.getMethod()) && "delete".equals(request.getParameter("action")) && request.getParameter("stockId") != null) {
-    int stockId = Integer.parseInt(request.getParameter("stockId"));
-    Connection connDelete = null;
-    PreparedStatement psDelete = null;
+            const feedback = document.getElementById('swalFeedback');
+            if (feedback) {
+                const status = feedback.getAttribute('data-status');
+                const title = feedback.getAttribute('data-title');
+                const msg = feedback.getAttribute('data-message');
+                const redirectUrl = feedback.getAttribute('data-redirect');
 
-    try {
-        String url = "jdbc:mysql://localhost:3306/FINANCIAL_DB";
-        String user = "root";
-        String pass = "trickortreat";
-        Class.forName("com.mysql.cj.jdbc.Driver");
-        connDelete = DriverManager.getConnection(url, user, pass);
-        String sql = "DELETE FROM TECHNICAL_SIGNALS WHERE STOCK_ID = ?";
-        psDelete = connDelete.prepareStatement(sql);
-        psDelete.setInt(1, stockId);
-        int rowsDeleted = psDelete.executeUpdate();
-        if (rowsDeleted > 0) {
-            out.println("<script>Swal.fire('Success', 'Technical Signal deleted successfully!', 'success').then(() => { window.location.href = 'manage-signals.jsp'; });</script>");
-            return;
-        } else {
-            request.setAttribute("message", "Error: Failed to delete Technical Signal.");
-            out.println("<script>Swal.fire('Error', 'Failed to delete Technical Signal.', 'error');</script>");
-        }
-    } catch (Exception e) {
-        e.printStackTrace();
-        request.setAttribute("message", "Error: " + e.getMessage());
-        out.println("<script>Swal.fire('Error', 'Error: " + e.getMessage() + "', 'error');</script>");
-    } finally {
-        try {
-            if (psDelete != null) psDelete.close();
-            if (connDelete != null) connDelete.close();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-}
-
-    // Handle Update report (GET)
-    if ("GET".equals(request.getMethod()) && "update".equals(request.getParameter("action")) && request.getParameter("stockId") != null) {
-        int stockId = Integer.parseInt(request.getParameter("stockId"));
-        Connection connUpdate = null;
-        PreparedStatement psUpdate = null;
-
-        try {
-            String url = "jdbc:mysql://localhost:3306/FINANCIAL_DB";
-            String user = "root";
-            String pass = "trickortreat";
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            connUpdate = DriverManager.getConnection(url, user, pass);
-            String sql = "SELECT ADX, VOLUME, MACD, CID FROM TECHNICAL_SIGNALS WHERE STOCK_ID = ?";
-            psUpdate = connUpdate.prepareStatement(sql);
-            psUpdate.setInt(1, stockId);
-            ResultSet rsUpdate = psUpdate.executeQuery();
-            if (rsUpdate.next()) {
-                double adx = rsUpdate.getDouble("ADX");
-                int volume = rsUpdate.getInt("VOLUME");
-                double macd = rsUpdate.getDouble("MACD");
-                int cid = rsUpdate.getInt("CID");
-    %>
-                <form action="manage-signals.jsp" method="POST" >
-                    <h5>Update Technical Signal</h5>
-                    <input type="hidden" name="stockId" value="<%= stockId %>">
-                    <input type="number" name="adx" id="adx" value="<%= adx %>" class="form-control mb-2"   required>
-                     <div  class="error-message">
-                        <% if (request.getAttribute("adxError") != null) { %>
-                            <%= request.getAttribute("adxError") %>
-                        <% } %>
-                    </div>
-                    <input type="number" name="volume" id="volume" value="<%= volume %>" class="form-control mb-2"   required>
-                    <div  class="error-message">
-                        <% if (request.getAttribute("volumeError") != null) { %>
-                            <%= request.getAttribute("volumeError") %>
-                        <% } %>
-                    </div>
-                    <input type="number" name="macd" id="macd" value="<%= macd %>" class="form-control mb-2"   required>
-                    <div  class="error-message">
-                        <% if (request.getAttribute("macdError") != null) { %>
-                            <%= request.getAttribute("macdError") %>
-                        <% } %>
-                    </div>
-                    <input type="number" name="cid" id="cid" value="<%= cid %>" class="form-control mb-2" required>
-                    <div  class="error-message">
-                        <% if (request.getAttribute("cidError") != null) { %>
-                            <%= request.getAttribute("cidError") %>
-                        <% } %>
-                    </div>
-                    <button type="submit" class="btn btn-warning add-btn">Update Signal</button>
-                </form>
-    <%
+                Swal.fire({
+                    title: title,
+                    text: msg,
+                    icon: status
+                }).then(() => {
+                    if (status === 'success' && redirectUrl) {
+                        window.location.href = redirectUrl;
+                    }
+                });
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-            request.setAttribute("message", "Error: " + e.getMessage());
-        } finally {
-            try {
-                if (psUpdate != null) psUpdate.close();
-                if (connUpdate != null) connUpdate.close();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-    %>
-</div>
+        });
 
-<footer>
-    <p>&copy; 2025 Financial Portfolio Manager</p>
-</footer>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-function showDeleteConfirmation(stockId) {
-    Swal.fire({
-        title: 'Are you sure?',
-        text: "You won't be able to revert this!",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#3085d6',
-        cancelButtonColor: '#d33',
-        confirmButtonText: 'Yes, delete it!'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            // Use window.location.href for redirection after confirmation
-            window.location.href = "manage-signals.jsp?stockId=" + stockId + "&action=delete";
+        function showDeleteConfirmation(stockId) {
+            Swal.fire({
+                title: 'Delete this Technical Signal?',
+                text: "This operation will remove indicator metrics for this company!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Yes, delete signal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = "manage-signals.jsp?stock_id=" + stockId + "&action=delete";
+                }
+            });
         }
-    });
-}
-</script>
+    </script>
 </body>
 </html>

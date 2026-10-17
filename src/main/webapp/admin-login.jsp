@@ -1,15 +1,61 @@
-<%@ page language="java" contentType="text/html; charset=UTF-8"
-	pageEncoding="UTF-8"%>
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ page import="java.sql.*"%>
+<%@ page import="java.security.MessageDigest"%>
+<%@ page import="java.nio.charset.StandardCharsets"%>
+
+<%!
+    // SHA-256 password hashing helper
+    public static String hashPassword(String password) {
+        if (password == null) return "";
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] hash = md.digest(password.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hash) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) hexString.append('0');
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    // Auto-migration helper to ensure ADMIN_EMAIL and PASSWORD columns exist
+    public static void ensureAdminSchema(Connection conn) {
+        try (Statement stmt = conn.createStatement()) {
+            try {
+                stmt.executeQuery("SELECT ADMIN_EMAIL FROM ADMIN LIMIT 1");
+            } catch (Exception e) {
+                try {
+                    stmt.executeUpdate("ALTER TABLE ADMIN ADD COLUMN ADMIN_EMAIL VARCHAR(100) UNIQUE");
+                    stmt.executeUpdate("UPDATE ADMIN SET ADMIN_EMAIL = 'admin@portfolio.com' WHERE ADMIN_EMAIL IS NULL");
+                } catch (Exception ex) {}
+            }
+            try {
+                stmt.executeQuery("SELECT PASSWORD FROM ADMIN LIMIT 1");
+            } catch (Exception e) {
+                try {
+                    stmt.executeUpdate("ALTER TABLE ADMIN ADD COLUMN PASSWORD VARCHAR(255) DEFAULT 'e86f78a8a3caf0b60d8e74e5942aa6d86dc150cd3c03338aef25b7d2d7e3acc7'");
+                } catch (Exception ex) {}
+            }
+        } catch (Exception e) {}
+    }
+%>
 
 <%
-    String adminId = request.getParameter("adminid");
-    String adminName = request.getParameter("adminname");
-    String adminIdError = "";
-    String adminNameError = "";
+    String adminEmail = request.getParameter("adminEmail");
+    String password = request.getParameter("password");
+    String emailError = "";
+    String passwordError = "";
+    String generalError = "";
     boolean loginSuccess = false;
 
-    if (adminId != null && adminName != null) {
+    if (adminEmail != null && password != null) {
+        adminEmail = adminEmail.trim();
+        password = password.trim();
+
         Connection conn = null;
         PreparedStatement pstmt = null;
         ResultSet rs = null;
@@ -21,36 +67,31 @@
             Class.forName("com.mysql.cj.jdbc.Driver");
             conn = DriverManager.getConnection(url, user, pass);
 
-            String sql = "SELECT ADMINNAME FROM ADMIN WHERE ADMINID = ? AND ADMINNAME = ?";
+            ensureAdminSchema(conn);
+
+            String hashedInput = hashPassword(password);
+
+            String sql = "SELECT ADMINID, ADMIN_EMAIL, ADMINNAME, PASSWORD FROM ADMIN WHERE LOWER(ADMIN_EMAIL) = LOWER(?)";
             pstmt = conn.prepareStatement(sql);
-            pstmt.setString(1, adminId);
-            pstmt.setString(2, adminName);
+            pstmt.setString(1, adminEmail);
             rs = pstmt.executeQuery();
 
             if (rs.next()) {
-                session.setAttribute("loggedInAdminName", rs.getString("ADMINNAME"));
-                session.setAttribute("loggedInAdminId", adminId);
-                loginSuccess = true;
+                String storedHash = rs.getString("PASSWORD");
+                if (storedHash != null && storedHash.equalsIgnoreCase(hashedInput)) {
+                    session.setAttribute("loggedInAdminId", rs.getInt("ADMINID"));
+                    session.setAttribute("loggedInAdminEmail", rs.getString("ADMIN_EMAIL"));
+                    session.setAttribute("loggedInAdminName", rs.getString("ADMINNAME"));
+                    loginSuccess = true;
+                } else {
+                    passwordError = "Incorrect administrator password. Access denied.";
+                }
             } else {
-                sql = "SELECT ADMINNAME FROM ADMIN WHERE ADMINID = ?";
-                pstmt = conn.prepareStatement(sql);
-                pstmt.setString(1, adminId);
-                rs = pstmt.executeQuery();
-                if (!rs.next()) {
-                    adminIdError = "Invalid Admin ID. Please try again.";
-                }
-
-                sql = "SELECT ADMINID FROM ADMIN WHERE ADMINNAME = ?";
-                pstmt = conn.prepareStatement(sql);
-                pstmt.setString(1, adminName);
-                rs = pstmt.executeQuery();
-                if (!rs.next()) {
-                    adminNameError = "Invalid Admin Name. Please try again.";
-                }
+                emailError = "Invalid administrative email. Record not found.";
             }
         } catch (Exception e) {
             e.printStackTrace();
-            adminIdError = "An error occurred: " + e.getMessage();
+            generalError = "Database Error: " + e.getMessage();
         } finally {
             try {
                 if (rs != null) rs.close();
@@ -64,145 +105,146 @@
 
     if (loginSuccess) {
         response.sendRedirect("admin-dashboard.jsp");
-    } else {
+        return;
+    }
 %>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Admin Login - Financial Portfolio Manager</title>
-<link rel="stylesheet"
-	href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-<link
-	href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap"
-	rel="stylesheet">
-<style>
-body {
-	font-family: 'Poppins', sans-serif;
-	margin: 0;
-	padding: 0;
-	background-color: #f2f2f2;
-	height: 100vh;
-	display: flex;
-	justify-content: center;
-	align-items: center;
-}
-
-.form-container {
-	padding: 50px 20px;
-	text-align: center;
-	max-width: 600px;
-	width: 100%;
-	background-color: white;
-	border-radius: 10px;
-	box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-}
-
-.form-container h2 {
-	font-size: 2rem;
-	color: #003366;
-	margin-bottom: 30px;
-}
-
-.form-control {
-	border-radius: 10px;
-	padding: 15px;
-	margin-bottom: 15px;
-	border: 1px solid #ccc;
-	transition: border-color 0.3s;
-}
-
-.form-control:focus {
-	border-color: #00bfff;
-	box-shadow: 0 0 5px rgba(0, 191, 255, 0.5);
-}
-
-.form-btn {
-	background-color: #00bfff;
-	border: none;
-	padding: 15px 30px;
-	color: white;
-	font-size: 1rem;
-	border-radius: 5px;
-	transition: background-color 0.3s;
-}
-
-.form-btn:hover {
-	background-color: #009acd;
-}
-
-.invalid {
-	border: 2px solid red !important;
-}
-
-.invalid-feedback {
-	display: block;
-	font-size: 0.8rem;
-	color: red;
-}
-</style>
-<script>
-    function validateForm() {
-        let adminId = document.getElementById("adminid");
-        let adminName = document.getElementById("adminname");
-        let isValid = true;
-
-        // Clear previous errors
-        document.getElementById("adminid-error").innerHTML = "";
-        document.getElementById("adminname-error").innerHTML = "";
-        adminId.classList.remove("invalid");
-        adminName.classList.remove("invalid");
-
-        // Admin ID validation (must be all digits)
-        if (adminId.value.trim() === "") {
-            adminId.classList.add("invalid");
-            document.getElementById("adminid-error").innerHTML = "Please enter your Admin ID.";
-            isValid = false;
-        } else if (!/^\d+$/.test(adminId.value.trim())) {
-            adminId.classList.add("invalid");
-            document.getElementById("adminid-error").innerHTML = "Admin ID must be numeric (digits only).";
-            isValid = false;
-        }
-
-        // Admin Name validation (must be only letters and spaces)
-        if (adminName.value.trim() === "") {
-            adminName.classList.add("invalid");
-            document.getElementById("adminname-error").innerHTML = "Please enter your Admin Name.";
-            isValid = false;
-        } else if (!/^[A-Za-z\s]+$/.test(adminName.value.trim())) {
-            adminName.classList.add("invalid");
-            document.getElementById("adminname-error").innerHTML = "Admin Name must contain only letters (no digits or symbols).";
-            isValid = false;
-        }
-
-        return isValid;
-    }
-</script>
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administrator Sign In - Financial Portfolio Management</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="Resources/fintech-theme.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
-<body>
-	<section class="form-container">
-		<h2>Admin Login</h2>
-		<form onsubmit="return validateForm()" method="POST">
-			<div class="form-group">
-				<input type="text"
-					class="form-control <%= !adminIdError.isEmpty() ? "invalid" : "" %>"
-					id="adminid" name="adminid" placeholder="Admin ID"
-					value="<%= adminId != null ? adminId : "" %>">
-				<div id="adminid-error" class="invalid-feedback"><%= adminIdError %></div>
-			</div>
-			<div class="form-group">
-				<input type="text"
-					class="form-control <%= !adminNameError.isEmpty() ? "invalid" : "" %>"
-					id="adminname" name="adminname" placeholder="Admin Name"
-					value="<%= adminName != null ? adminName : "" %>">
-				<div id="adminname-error" class="invalid-feedback"><%= adminNameError %></div>
-			</div>
-			<button type="submit" class="form-btn">Login</button>
-		</form>
-	</section>
+<body class="fin-auth-container" style="background: radial-gradient(circle at top center, #1e1b4b 0%, #0a192f 60%, #060d1b 100%);">
+
+    <div class="fin-auth-card">
+        <!-- Logo & Header -->
+        <div class="text-center mb-4">
+            <a href="index.jsp" class="fin-brand justify-content-center mb-3">
+                <div class="fin-brand-logo" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                    <i class="bi bi-shield-lock-fill"></i>
+                </div>
+                <div class="fin-brand-name text-start">
+                    <span class="text-dark">FinManage</span>
+                    <span class="fin-brand-sub" style="color: #f59e0b;">SYSTEM CONTROL CENTER</span>
+                </div>
+            </a>
+            <h4 class="fw-bold text-dark mt-2">Administrator Sign In</h4>
+            <p class="text-muted small">Enter master credentials to access the administrative control center.</p>
+        </div>
+
+        <% if (!generalError.isEmpty()) { %>
+            <div class="alert alert-danger py-2 small mb-3">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i> <%= generalError %>
+            </div>
+        <% } %>
+
+        <!-- Login Form -->
+        <form id="adminLoginForm" action="admin-login.jsp" method="POST" novalidate>
+            <div class="mb-3">
+                <label for="adminEmail" class="form-label fw-semibold small text-secondary">
+                    <i class="bi bi-shield-check text-warning me-1"></i> Administrator Email
+                </label>
+                <div class="input-group <%= !emailError.isEmpty() ? "is-invalid" : "" %>">
+                    <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-envelope-at"></i></span>
+                    <input type="email" id="adminEmail" name="adminEmail" 
+                           class="form-control fin-input border-start-0 <%= !emailError.isEmpty() ? "is-invalid" : "" %>" 
+                           placeholder="e.g. admin@portfolio.com" 
+                           value="<%= (adminEmail != null) ? adminEmail : "" %>" required>
+                </div>
+                <% if (!emailError.isEmpty()) { %>
+                    <div class="fin-field-error">
+                        <i class="bi bi-exclamation-circle-fill"></i> <%= emailError %>
+                    </div>
+                <% } %>
+            </div>
+
+            <div class="mb-3">
+                <label for="password" class="form-label fw-semibold small text-secondary">
+                    <i class="bi bi-key-fill text-warning me-1"></i> Master Password
+                </label>
+                <div class="input-group <%= !passwordError.isEmpty() ? "is-invalid" : "" %>">
+                    <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-lock"></i></span>
+                    <input type="password" id="password" name="password" 
+                           class="form-control fin-input border-start-0 <%= !passwordError.isEmpty() ? "is-invalid" : "" %>" 
+                           placeholder="••••••••" required>
+                </div>
+                <% if (!passwordError.isEmpty()) { %>
+                    <div class="fin-field-error">
+                        <i class="bi bi-exclamation-circle-fill"></i> <%= passwordError %>
+                    </div>
+                <% } %>
+            </div>
+
+            <button type="submit" id="adminSubmitBtn" class="fin-btn w-100 py-3 mt-3 text-white" 
+                    style="background: linear-gradient(135deg, #d97706, #b45309); box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3);">
+                <i class="bi bi-shield-lock me-1"></i> Access Master Terminal
+            </button>
+        </form>
+
+        <!-- Links Footer -->
+        <div class="text-center mt-4 pt-3 border-top">
+            <div class="d-flex justify-content-center gap-3 small">
+                <a href="index.jsp" class="text-secondary text-decoration-none"><i class="bi bi-house me-1"></i>Home</a>
+                <span class="text-muted">•</span>
+                <a href="login.jsp" class="text-primary text-decoration-none"><i class="bi bi-box-arrow-in-right me-1"></i>Client Login</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="Resources/fintech-charts.js"></script>
+    <script>
+        const form = document.getElementById('adminLoginForm');
+        const emailInput = document.getElementById('adminEmail');
+        const pwdInput = document.getElementById('password');
+
+        FinTechApp.bindLiveValidation(form);
+
+        function validateAdminForm() {
+            let isValid = true;
+            FinTechApp.clearError(emailInput);
+            FinTechApp.clearError(pwdInput);
+
+            const emailVal = emailInput.value.trim();
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailVal) {
+                FinTechApp.showError(emailInput, 'Admin email address is required.');
+                isValid = false;
+            } else if (!emailRegex.test(emailVal)) {
+                FinTechApp.showError(emailInput, 'Please enter a valid administrative email.');
+                isValid = false;
+            }
+
+            const pwdVal = pwdInput.value;
+            if (!pwdVal) {
+                FinTechApp.showError(pwdInput, 'Password is required.');
+                isValid = false;
+            }
+
+            return isValid;
+        }
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (validateAdminForm()) {
+                FinTechApp.confirmAction(
+                    'Administrator Verification',
+                    'Are you sure you want to log in to the System Control Center?',
+                    'Yes, Sign In',
+                    function () {
+                        form.submit();
+                    },
+                    'warning'
+                );
+            }
+        });
+    </script>
 </body>
 </html>
-<%
-    }
-%>

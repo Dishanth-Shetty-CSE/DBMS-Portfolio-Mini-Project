@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect width="100" height="100" rx="20" fill="#ef4444"/>
+  <path d="M50 20 C32 20 22 34 22 52 C22 68 34 78 50 78 C66 78 78 68 78 52 C78 34 68 20 50 20 Z" fill="#ffffff" fill-opacity="0.15"/>
+  <text x="50" y="62" font-family="'Poppins', sans-serif" font-size="34" font-weight="900" fill="#ffffff" text-anchor="middle">A</text>
+</svg>

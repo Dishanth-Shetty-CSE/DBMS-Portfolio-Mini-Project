@@ -1,368 +1,465 @@
-<%@ page language="java" contentType="text/html; charset=UTF-8"
-	pageEncoding="UTF-8"%>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Financial Portfolio Manager</title>
-<link rel="stylesheet"
-	href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-<link
-	href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap"
-	rel="stylesheet">
-<style>
-html {
-	scroll-behavior: smooth;
-}
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+    <!DOCTYPE html>
+    <html lang="en">
 
-body {
-	font-family: 'Poppins', sans-serif;
-	margin: 0;
-	padding: 0;
-	background-color: #f2f2f2;
-}
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>FinManage - Institutional & Retail Portfolio Management System</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link
+            href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+            rel="stylesheet">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <link rel="stylesheet" href="Resources/fintech-theme.css">
+        <style>
+            .hero-banner {
+                background: linear-gradient(135deg, rgba(10, 25, 47, 0.95), rgba(7, 13, 30, 0.97)), url('Resources/Land-Image.jpg') center/cover no-repeat;
+                min-height: 85vh;
+                display: flex;
+                align-items: center;
+                position: relative;
+                padding: 90px 0 60px;
+                color: #ffffff;
+            }
 
-.navbar {
-	background-color: #00274D;
-	position: fixed;
-	width: 100%;
-	top: 0;
-	z-index: 999;
-	box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-}
+            .hero-pill {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                background: rgba(2, 132, 199, 0.15);
+                border: 1px solid rgba(56, 189, 248, 0.3);
+                color: #38bdf8;
+                padding: 6px 16px;
+                border-radius: 50px;
+                font-size: 0.82rem;
+                font-weight: 600;
+                margin-bottom: 20px;
+            }
 
-.navbar-brand, .nav-link {
-	color: white !important;
-	font-weight: 500;
-}
+            .hero-title {
+                font-size: 3.4rem;
+                font-weight: 800;
+                letter-spacing: -0.03em;
+                line-height: 1.15;
+                margin-bottom: 20px;
+            }
 
-.nav-link:hover {
-	background-color: #0056b3;
-	color: #fff !important;
-	border-radius: 5px;
-}
+            .hero-title span {
+                background: linear-gradient(135deg, #38bdf8, #10b981);
+                background-clip: text;
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }
 
-.hero {
-	background: url('Resources/Land-Image.jpg') no-repeat center center/cover;
-	height: 100vh;
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
-	align-items: center;
-	text-align: center;
-	color: white;
-	position: relative;
-}
+            .hero-lead {
+                font-size: 1.25rem;
+                color: #94a3b8;
+                max-width: 620px;
+                margin-bottom: 35px;
+            }
 
-section {
-	scroll-margin-top: 100px; /* This is already set */
-	padding-top: 100px; /* Adjust based on navbar height */
-}
+            .stat-badge {
+                background: rgba(255, 255, 255, 0.05);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 12px;
+                padding: 16px 20px;
+                color: #fff;
+            }
 
-.hero::before {
-	content: "";
-	position: absolute;
-	top: 0;
-	left: 0;
-	height: 100%;
-	width: 100%;
-	background-color: rgba(0, 39, 77, 0.6);
-	z-index: 0;
-}
+            .stat-badge-num {
+                font-size: 1.5rem;
+                font-weight: 800;
+                color: #38bdf8;
+                font-family: 'JetBrains Mono', monospace;
+            }
 
-.hero-content {
-	position: relative;
-	z-index: 1;
-	max-width: 800px;
-	margin-top: 60px;
-}
+            .stat-badge-lbl {
+                font-size: 0.78rem;
+                color: #94a3b8;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
 
-.hero h1 {
-	font-size: 3.5rem;
-	font-weight: 700;
-}
+            .market-card {
+                background: rgba(255, 255, 255, 0.04);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                backdrop-filter: blur(10px);
+                border-radius: 16px;
+                padding: 24px;
+                box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            }
 
-h5 {
-	color: #003366; /* deep navy */
-	font-weight: 600;
-}
+            .market-subtext {
+                color: #93c5fd !important;
+                font-size: 0.85rem;
+                font-weight: 500;
+                letter-spacing: 0.02em;
+            }
+        </style>
+    </head>
 
-.hero p {
-	font-size: 1.3rem;
-	margin-top: 20px;
-}
+    <body>
 
-.btn-primary {
-	background-color: #00bfff;
-	border: none;
-	font-size: 1rem;
-}
+        <!-- LIVE MARKET TICKER TAPE -->
+        <div class="ticker-wrap">
+            <div class="ticker-inner">
+                <div class="ticker-item"><span class="sym">NIFTY 50</span> <span class="val">24,850.30</span> <span
+                        class="chg up"><i class="bi bi-arrow-up-short"></i>+142.15 (+0.58%)</span></div>
+                <div class="ticker-item"><span class="sym">SENSEX</span> <span class="val">81,224.75</span> <span
+                        class="chg up"><i class="bi bi-arrow-up-short"></i>+488.30 (+0.60%)</span></div>
+                <div class="ticker-item"><span class="sym">INFY</span> <span class="val">₹1,520.50</span> <span
+                        class="chg up"><i class="bi bi-arrow-up-short"></i>+1.85%</span></div>
+                <div class="ticker-item"><span class="sym">RELIANCE</span> <span class="val">₹2,580.00</span> <span
+                        class="chg up"><i class="bi bi-arrow-up-short"></i>+0.92%</span></div>
+                <div class="ticker-item"><span class="sym">TATAMOTORS</span> <span class="val">₹745.20</span> <span
+                        class="chg down"><i class="bi bi-arrow-down-short"></i>-0.45%</span></div>
+                <div class="ticker-item"><span class="sym">HDFCBANK</span> <span class="val">₹1,640.00</span> <span
+                        class="chg up"><i class="bi bi-arrow-up-short"></i>+1.20%</span></div>
+                <div class="ticker-item"><span class="sym">WIPRO</span> <span class="val">₹1,315.00</span> <span
+                        class="chg down"><i class="bi bi-arrow-down-short"></i>-0.15%</span></div>
+                <div class="ticker-item"><span class="sym">TCS</span> <span class="val">₹3,850.00</span> <span
+                        class="chg up"><i class="bi bi-arrow-up-short"></i>+2.10%</span></div>
+                <!-- Duplicate for seamless continuous ticker loop -->
+                <div class="ticker-item"><span class="sym">NIFTY 50</span> <span class="val">24,850.30</span> <span
+                        class="chg up"><i class="bi bi-arrow-up-short"></i>+142.15 (+0.58%)</span></div>
+                <div class="ticker-item"><span class="sym">SENSEX</span> <span class="val">81,224.75</span> <span
+                        class="chg up"><i class="bi bi-arrow-up-short"></i>+488.30 (+0.60%)</span></div>
+                <div class="ticker-item"><span class="sym">INFY</span> <span class="val">₹1,520.50</span> <span
+                        class="chg up"><i class="bi bi-arrow-up-short"></i>+1.85%</span></div>
+                <div class="ticker-item"><span class="sym">RELIANCE</span> <span class="val">₹2,580.00</span> <span
+                        class="chg up"><i class="bi bi-arrow-up-short"></i>+0.92%</span></div>
+            </div>
+        </div>
 
-.btn-primary:hover {
-	background-color: #009acd;
-}
+        <!-- MAIN NAVBAR -->
+        <nav class="navbar navbar-expand-lg fin-navbar">
+            <div class="container">
+                <a class="fin-brand" href="index.jsp">
+                    <div class="fin-brand-logo">
+                        <i class="bi bi-graph-up-arrow"></i>
+                    </div>
+                    <div class="fin-brand-name">
+                        <span>FinManage</span>
+                        <span class="fin-brand-sub">PORTFOLIO INTELLIGENCE</span>
+                    </div>
+                </a>
+                <button class="navbar-toggler border-0 text-white" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#mainNav">
+                    <i class="bi bi-list fs-2"></i>
+                </button>
+                <div class="collapse navbar-collapse" id="mainNav">
+                    <ul class="navbar-nav ms-auto align-items-center gap-1">
+                        <li class="nav-item"><a class="fin-nav-link active" href="index.jsp"><i
+                                    class="bi bi-house-door"></i> Home</a></li>
+                        <li class="nav-item"><a class="fin-nav-link" href="#features"><i class="bi bi-cpu"></i>
+                                Features</a></li>
+                        <li class="nav-item"><a class="fin-nav-link" href="#why"><i class="bi bi-shield-check"></i> Why
+                                Us</a></li>
+                        <li class="nav-item ms-lg-2"><a class="fin-btn fin-btn-outline py-2 px-3 text-white"
+                                style="background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.15);"
+                                href="login.jsp"><i class="bi bi-box-arrow-in-right"></i> Client Login</a></li>
+                        <li class="nav-item ms-lg-1"><a class="fin-btn fin-btn-emerald py-2 px-3" href="register.jsp"><i
+                                    class="bi bi-person-plus"></i> Open Account</a></li>
+                        <li class="nav-item ms-lg-1"><a
+                                class="fin-btn fin-btn-outline py-2 px-3 text-warning border-warning"
+                                style="background: rgba(245,158,11,0.08);" href="admin-login.jsp"><i
+                                    class="bi bi-shield-lock"></i> Admin</a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
 
-.features, .why-choose {
-	padding: 80px 20px;
-	text-align: center;
-}
+        <!-- HERO SECTION -->
+        <header class="hero-banner" id="home">
+            <div class="container">
+                <div class="row align-items-center gy-5">
+                    <div class="col-lg-7">
+                        <div class="hero-pill">
+                            <i class="bi bi-lightning-charge-fill"></i> Next-Gen Institutional Wealth Engine
+                        </div>
+                        <h1 class="hero-title">
+                            Smarter Portfolio Management, <span>Real-Time Edge.</span>
+                        </h1>
+                        <p class="hero-lead">
+                            Track live holdings, analyze technical indicators (ADX, MACD, Volume), evaluate fundamentals
+                            (EPS, ROE), and execute transactions with bank-grade security.
+                        </p>
+                        <div class="d-flex flex-wrap gap-3 mb-5">
+                            <a href="login.jsp" class="fin-btn fin-btn-primary px-4 py-3 fs-6">
+                                <i class="bi bi-speedometer2"></i> Launch Client Terminal
+                            </a>
+                            <a href="register.jsp" class="fin-btn fin-btn-outline px-4 py-3 fs-6 text-white"
+                                style="background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2);">
+                                <i class="bi bi-person-check"></i> Register Free
+                            </a>
+                            <a href="admin-login.jsp" class="fin-btn fin-btn-outline px-4 py-3 fs-6 text-warning"
+                                style="background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.3);">
+                                <i class="bi bi-key-fill"></i> Administrator
+                            </a>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-sm-4">
+                                <div class="stat-badge">
+                                    <div class="stat-badge-num">₹240Cr+</div>
+                                    <div class="stat-badge-lbl">Market Capital Tracked</div>
+                                </div>
+                            </div>
+                            <div class="col-sm-4">
+                                <div class="stat-badge">
+                                    <div class="stat-badge-num">99.99%</div>
+                                    <div class="stat-badge-lbl">System Reliability</div>
+                                </div>
+                            </div>
+                            <div class="col-sm-4">
+                                <div class="stat-badge">
+                                    <div class="stat-badge-num">256-Bit</div>
+                                    <div class="stat-badge-lbl">Encrypted Database</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-.feature-box {
-	padding: 30px;
-	border-radius: 10px;
-	box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-	background-color: #f8f9fa;
-	transition: transform 0.3s ease;
-}
+                    <div class="col-lg-5">
+                        <div class="market-card">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="m-0 text-white font-weight-bold"><i
+                                        class="bi bi-graph-up text-info me-2"></i>Live Market Pulse</h5>
+                                <span class="badge bg-success"><i class="bi bi-circle-fill me-1"
+                                        style="font-size: 6px;"></i> MARKET OPEN</span>
+                            </div>
+                            <div class="list-group list-group-flush bg-transparent">
+                                <div
+                                    class="list-group-item bg-transparent text-white border-secondary d-flex justify-content-between align-items-center py-3">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <img src="Resources/stocks/infosys.svg" width="36" height="36" class="rounded"
+                                            alt="INFY">
+                                        <div>
+                                            <div class="fw-bold">Infosys Ltd</div>
+                                            <div class="market-subtext" style="color: #93c5fd !important; font-size: 0.85rem; font-weight: 500;">IT • NSE: INFY</div>
+                                        </div>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="fw-bold text-mono">₹1,520.50</div>
+                                        <span class="badge bg-success-subtle text-success">+1.85%</span>
+                                    </div>
+                                </div>
+                                <div
+                                    class="list-group-item bg-transparent text-white border-secondary d-flex justify-content-between align-items-center py-3">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <img src="Resources/stocks/reliance.svg" width="36" height="36" class="rounded"
+                                            alt="RIL">
+                                        <div>
+                                            <div class="fw-bold">Reliance Industries</div>
+                                            <div class="market-subtext" style="color: #93c5fd !important; font-size: 0.85rem; font-weight: 500;">Energy • NSE: RELIANCE</div>
+                                        </div>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="fw-bold text-mono">₹2,580.00</div>
+                                        <span class="badge bg-success-subtle text-success">+0.92%</span>
+                                    </div>
+                                </div>
+                                <div
+                                    class="list-group-item bg-transparent text-white border-secondary d-flex justify-content-between align-items-center py-3">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <img src="Resources/stocks/tatamotors.svg" width="36" height="36"
+                                            class="rounded" alt="TATAMOTORS">
+                                        <div>
+                                            <div class="fw-bold">Tata Motors</div>
+                                            <div class="market-subtext" style="color: #93c5fd !important; font-size: 0.85rem; font-weight: 500;">Automobile • NSE: TATAMTR</div>
+                                        </div>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="fw-bold text-mono">₹745.20</div>
+                                        <span class="badge bg-danger-subtle text-danger">-0.45%</span>
+                                    </div>
+                                </div>
+                                <div
+                                    class="list-group-item bg-transparent text-white border-0 d-flex justify-content-between align-items-center py-3">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <img src="Resources/stocks/hdfc.svg" width="36" height="36" class="rounded"
+                                            alt="HDFCBANK">
+                                        <div>
+                                            <div class="fw-bold">HDFC Bank</div>
+                                            <div class="market-subtext" style="color: #93c5fd !important; font-size: 0.85rem; font-weight: 500;">Banking • NSE: HDFCBANK</div>
+                                        </div>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="fw-bold text-mono">₹1,640.00</div>
+                                        <span class="badge bg-success-subtle text-success">+1.20%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
 
-.feature-box:hover {
-	transform: translateY(-5px);
-}
+        <!-- KEY FEATURES SECTION -->
+        <section class="py-5 bg-white" id="features">
+            <div class="container py-4">
+                <div class="text-center max-w-700 mx-auto mb-5">
+                    <span class="text-primary fw-bold text-uppercase small tracking-wide">Integrated Capabilities</span>
+                    <h2 class="fw-bold mt-1">Institutional-Grade FinTech Ecosystem</h2>
+                    <p class="text-muted">Designed for wealth managers, high-net-worth investors, and financial
+                        analysts.</p>
+                </div>
 
-.feature-icon {
-	font-size: 50px;
-	color: #0056b3;
-	margin-bottom: 20px;
-}
+                <div class="row g-4">
+                    <div class="col-lg-4 col-md-6">
+                        <div class="kpi-card h-100">
+                            <div class="kpi-icon-box kpi-icon-blue mb-3">
+                                <i class="bi bi-activity"></i>
+                            </div>
+                            <h5 class="fw-bold mb-2">Live Portfolio Valuation</h5>
+                            <p class="text-muted mb-0">Real-time calculations of invested capital, total market value,
+                                unrealized profit & loss, and percentage return.</p>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 col-md-6">
+                        <div class="kpi-card h-100">
+                            <div class="kpi-icon-box kpi-icon-emerald mb-3">
+                                <i class="bi bi-pie-chart-fill"></i>
+                            </div>
+                            <h5 class="fw-bold mb-2">Asset Allocation Analytics</h5>
+                            <p class="text-muted mb-0">Dynamic interactive visual donuts revealing exposure across
+                                Information Technology, Energy, Automobile, and Banking sectors.</p>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 col-md-6">
+                        <div class="kpi-card h-100">
+                            <div class="kpi-icon-box kpi-icon-purple mb-3">
+                                <i class="bi bi-sliders"></i>
+                            </div>
+                            <h5 class="fw-bold mb-2">Technical Signals Radar</h5>
+                            <p class="text-muted mb-0">Monitor Trend Strength with Average Directional Index (ADX),
+                                Momentum via MACD, and real-time market volume indicators.</p>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 col-md-6">
+                        <div class="kpi-card h-100">
+                            <div class="kpi-icon-box kpi-icon-amber mb-3">
+                                <i class="bi bi-file-earmark-bar-graph"></i>
+                            </div>
+                            <h5 class="fw-bold mb-2">Fundamental Reports</h5>
+                            <p class="text-muted mb-0">Deep financial metrics including Last Traded Price (LTP),
+                                Earnings Per Share (EPS), and Return on Equity (ROE).</p>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 col-md-6">
+                        <div class="kpi-card h-100">
+                            <div class="kpi-icon-box kpi-icon-blue mb-3">
+                                <i class="bi bi-arrow-left-right"></i>
+                            </div>
+                            <h5 class="fw-bold mb-2">Instant Order Execution</h5>
+                            <p class="text-muted mb-0">Execute BUY and SELL transactions with real-time rate validation,
+                                quantity accounting, and transaction auditing.</p>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 col-md-6">
+                        <div class="kpi-card h-100">
+                            <div class="kpi-icon-box kpi-icon-emerald mb-3">
+                                <i class="bi bi-shield-check"></i>
+                            </div>
+                            <h5 class="fw-bold mb-2">Admin Command Center</h5>
+                            <p class="text-muted mb-0">Dedicated management suite for companies, technical indicators,
+                                fundamental balance sheets, and user management.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-.why-choose .card {
-	border: none;
-	transition: transform 0.3s ease;
-	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-	display: flex; /* Enable flexbox for vertical alignment */
-	flex-direction: column;
-	height: 100%;
-}
+        <!-- WHY CHOOSE FINMANAGE -->
+        <section class="py-5" id="why" style="background: #f8fafc;">
+            <div class="container py-4">
+                <div class="text-center max-w-700 mx-auto mb-5">
+                    <span class="text-primary fw-bold text-uppercase small tracking-wide">Enterprise Quality</span>
+                    <h2 class="fw-bold mt-1">Why Leading Investors Trust FinManage</h2>
+                    <p class="text-muted">Built with robust database integrity, modern security standards, and
+                        crystal-clear analytics.</p>
+                </div>
 
-.why-choose .card:hover {
-	transform: translateY(-10px);
-}
+                <div class="row g-4">
+                    <div class="col-md-4">
+                        <div class="fin-card h-100">
+                            <img src="Resources/Data-Security.jpg" class="card-img-top"
+                                style="height: 220px; object-fit: cover;" alt="Data Security">
+                            <div class="fin-card-body">
+                                <h5 class="fw-bold text-dark"><i class="bi bi-lock-fill text-primary me-2"></i>Data
+                                    Security First</h5>
+                                <p class="text-muted mb-0">Parameterized SQL transactions, strict role isolation,
+                                    session integrity, and encrypted database connections keep every rupee secure.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="fin-card h-100">
+                            <img src="Resources/Real-Time-Analytics.jpg" class="card-img-top"
+                                style="height: 220px; object-fit: cover;" alt="Real-Time Analytics">
+                            <div class="fin-card-body">
+                                <h5 class="fw-bold text-dark"><i class="bi bi-cpu-fill text-success me-2"></i>Real-Time
+                                    Insights</h5>
+                                <p class="text-muted mb-0">Gain immediate visual clarity through interactive trading
+                                    charts, live asset allocation donuts, and automatic sector exposure breakdowns.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="fin-card h-100">
+                            <img src="Resources/Expert-Support.avif" class="card-img-top"
+                                style="height: 220px; object-fit: cover;" alt="Expert Support">
+                            <div class="fin-card-body">
+                                <h5 class="fw-bold text-dark"><i class="bi bi-headset text-warning me-2"></i>Continuous
+                                    Reliability</h5>
+                                <p class="text-muted mb-0">Engineered with MySQL database relational constraints,
+                                    foreign keys, cascading integrity, and high-performance querying.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-.why-choose .card-body {
-	display: flex; /* Enable flexbox for horizontal alignment of image and text */
-	flex-direction: column;
-	align-items: flex-start; /* Align items to the start (top in column direction) */
-	text-align: left; /* Re-align text to the left within the card body */
-	flex-grow: 1; /* Allow the body to take up space */
-}
+        <!-- CALL TO ACTION BANNER -->
+        <section class="py-5" style="background: linear-gradient(135deg, #0a192f, #0f2444); color: white;">
+            <div class="container py-4 text-center">
+                <h2 class="fw-bold mb-3">Ready to Elevate Your Investment Management?</h2>
+                <p class="lead text-light mb-4 max-w-600 mx-auto" style="opacity: 0.9;">Join today or launch the
+                    terminal to experience institutional-grade portfolio oversight.</p>
+                <div class="d-flex justify-content-center gap-3 flex-wrap">
+                    <a href="register.jsp" class="fin-btn fin-btn-emerald px-4 py-3 fs-6">
+                        <i class="bi bi-person-plus-fill"></i> Create Free Account
+                    </a>
+                    <a href="login.jsp" class="fin-btn fin-btn-outline px-4 py-3 fs-6 text-white"
+                        style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2);">
+                        <i class="bi bi-box-arrow-in-right"></i> Sign In to Dashboard
+                    </a>
+                </div>
+            </div>
+        </section>
 
-.why-choose .card-title {
-	margin-bottom: 1rem;
-}
+        <!-- FOOTER -->
+        <footer class="fin-footer mt-0">
+            <div class="container text-center">
+                <div class="d-flex align-items-center justify-content-center gap-2 mb-3">
+                    <div class="fin-brand-logo" style="width: 32px; height: 32px; font-size: 1rem;">
+                        <i class="bi bi-graph-up-arrow"></i>
+                    </div>
+                    <span class="text-white fw-bold fs-5">FinManage</span>
+                </div>
+                <p class="mb-2 text-muted">&copy; 2026 Financial Portfolio Management System. All Rights Reserved.</p>
+                <p class="small text-secondary mb-0">Empowered by MySQL Relational Database • Java Servlets & JSP •
+                    FinTech Elite UI</p>
+            </div>
+        </footer>
 
-.get-started {
-	background-color: #00274D;
-	color: white;
-	padding: 60px 20px;
-	text-align: center;
-}
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+        <script src="Resources/fintech-charts.js"></script>
+    </body>
 
-footer {
-	background-color: #00274D;
-	color: white;
-	padding: 20px 0;
-	text-align: center;
-}
-
-section {
-	scroll-margin-top: 100px;
-}
-
-.why-choose .card-img-top {
-	object-fit: cover;
-	height: 200px; /* Or whatever height you want */
-}
-</style>
-<script src="https://kit.fontawesome.com/a076d05399.js"
-	crossorigin="anonymous"></script>
-</head>
-<body>
-
-	<nav class="navbar navbar-expand-lg navbar-dark">
-		<div class="container">
-			<a class="navbar-brand" href="#">FinManage</a>
-			<button class="navbar-toggler" type="button"
-				data-bs-toggle="collapse" data-bs-target="#navbarNav">
-				<span class="navbar-toggler-icon"></span>
-			</button>
-			<div class="collapse navbar-collapse" id="navbarNav">
-				<ul class="navbar-nav ms-auto">
-					<li class="nav-item"><a class="nav-link" href="index.jsp">Home</a></li>
-					<li class="nav-item"><a class="nav-link" href="#features">Features</a></li>
-					<li class="nav-item"><a class="nav-link" href="login.jsp">Login</a></li>
-					<li class="nav-item"><a class="nav-link" href="register.jsp">Register</a></li>
-					<li class="nav-item"><a class="nav-link" href="admin-login.jsp">Admin</a></li>
-				</ul>
-			</div>
-		</div>
-	</nav>
-
-	<section class="hero" id="home">
-		<div class="hero-content">
-			<h1>Smart Financial Portfolio Management</h1>
-			<p>Securely monitor, grow, and control your investments.</p>
-			<a href="#features" class="btn btn-primary mt-4 px-4 py-2">Explore
-				Features</a>
-		</div>
-	</section>
-
-	<section class="features container" id="features">
-		<h2 class="mb-5">Key Platform Features</h2>
-		<div class="row g-4">
-			<div class="col-md-4 d-flex">
-				<div class="feature-box h-100 w-100">
-					<div class="feature-icon">
-						<i class="fas fa-chart-line"></i>
-					</div>
-					<h5>Live Portfolio Tracking</h5>
-					<p>Monitor market changes and your investments in real-time
-						with rich dashboards.</p>
-				</div>
-			</div>
-			<div class="col-md-4 d-flex">
-				<div class="feature-box h-100 w-100">
-					<div class="feature-icon">
-						<i class="fas fa-user-shield"></i>
-					</div>
-					<h5>Bank-Level Security</h5>
-					<p>We use top encryption practices to keep your financial data
-						secure and private.</p>
-				</div>
-			</div>
-			<div class="col-md-4 d-flex">
-				<div class="feature-box h-100 w-100">
-					<div class="feature-icon">
-						<i class="fas fa-file-alt"></i>
-					</div>
-					<h5>Reports & Analysis</h5>
-					<p>Download detailed reports and insights to stay ahead with
-						your finances.</p>
-				</div>
-			</div>
-			<div class="col-md-4 d-flex">
-				<div class="feature-box h-100 w-100">
-					<div class="feature-icon">
-						<i class="fas fa-chart-pie"></i>
-					</div>
-					<h5>Investment Insights</h5>
-					<p>Get actionable insights and analytics to optimize your
-						investment strategy.</p>
-				</div>
-			</div>
-
-			<div class="col-md-4 d-flex">
-				<div class="feature-box h-100 w-100">
-					<div class="feature-icon">
-						<i class="fas fa-cogs"></i>
-					</div>
-					<h5>Customizable Dashboards</h5>
-					<p>Create personalized dashboards to track what matters most to
-						you.</p>
-				</div>
-			</div>
-
-			<div class="col-md-4 d-flex">
-				<div class="feature-box h-100 w-100">
-					<div class="feature-icon">
-						<i class="fas fa-hand-holding-usd"></i>
-					</div>
-					<h5>Smart Portfolio Rebalancing</h5>
-					<p>Automatically rebalance your portfolio based on market
-						conditions and your goals.</p>
-				</div>
-			</div>
-
-		</div>
-	</section>
-
-	<section class="why-choose container" id="why">
-		<h2 class="mb-5">Why Choose FinManage?</h2>
-		<div class="row g-4">
-			<div class="col-md-4">
-				<div class="card h-100">
-					<img src="Resources/Data-Security.jpg" class="card-img-top"
-						alt="Secure Platform">
-					<div class="card-body">
-						<h5 class="card-title">Data Security First</h5>
-						<p class="card-text">Advanced authentication and encrypted
-							transactions keep your money and data safe.</p>
-					</div>
-				</div>
-			</div>
-			<div class="col-md-4">
-				<div class="card h-100">
-					<img src="Resources/Real-Time-Analytics.jpg" class="card-img-top"
-						alt="Real-Time Analytics">
-					<div class="card-body">
-						<h5 class="card-title">Real-Time Insights</h5>
-						<p class="card-text">Understand your portfolio with visual
-							graphs, charts, and alerts as markets move.</p>
-					</div>
-				</div>
-			</div>
-			<div class="col-md-4">
-				<div class="card h-100">
-					<img src="Resources/Expert-Support.avif" class="card-img-top"
-						alt="Personal Support">
-					<div class="card-body">
-						<h5 class="card-title">Expert Support</h5>
-						<p class="card-text">Our team is ready to assist you anytime
-							with insights, tips, or technical help.</p>
-					</div>
-				</div>
-			</div>
-		</div>
-	</section>
-
-	<section class="get-started">
-		<h2>Ready to Take Control of Your Finances?</h2>
-		<p class="lead mt-3">Join thousands of users managing their
-			portfolios with FinManage.</p>
-		<a href="register.jsp" class="btn btn-primary mt-4 px-4 py-2">Create
-			Your Free Account</a>
-	</section>
-
-	<footer>
-		<div class="container">
-			<p>&copy; 2025 FinManage. All rights reserved.</p>
-		</div>
-	</footer>
-
-	<script
-		src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-	<script>
-document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-    anchor.addEventListener('click', function (e) {
-        e.preventDefault();
-
-        document.querySelector(this.getAttribute('href')).scrollIntoView({
-            behavior: 'smooth',
-            block: 'start'
-        });
-    });
-});
-
-// Highlight active section on scroll
-const sections = document.querySelectorAll('section');
-const navLinks = document.querySelectorAll('.nav-link');
-
-window.addEventListener('scroll', () => {
-    let current = '';
-    
-    sections.forEach(section => {
-        const sectionTop = section.offsetTop;
-        if (pageYOffset >= sectionTop - 60) {
-            current = section.getAttribute('id');
-        }
-    });
-
-    navLinks.forEach(link => {
-        link.classList.remove('active');
-        if (link.getAttribute('href') === `#${current}`) {
-            link.classList.add('active');
-        }
-    });
-});
-</script>
-</body>
-</html>
+    </html>

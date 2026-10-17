@@ -1,15 +1,61 @@
-<%@ page language="java" contentType="text/html; charset=UTF-8"
-	pageEncoding="UTF-8"%>
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ page import="java.sql.*"%>
+<%@ page import="java.security.MessageDigest"%>
+<%@ page import="java.nio.charset.StandardCharsets"%>
+
+<%!
+    // Secure SHA-256 password hashing helper
+    public static String hashPassword(String password) {
+        if (password == null) return "";
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] hash = md.digest(password.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hash) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) hexString.append('0');
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    // Auto-migration helper to ensure CUST_EMAIL and PASSWORD columns exist seamlessly
+    public static void ensureCustomerSchema(Connection conn) {
+        try (Statement stmt = conn.createStatement()) {
+            try {
+                stmt.executeQuery("SELECT CUST_EMAIL FROM USER LIMIT 1");
+            } catch (Exception e) {
+                try {
+                    stmt.executeUpdate("ALTER TABLE USER ADD COLUMN CUST_EMAIL VARCHAR(100) UNIQUE");
+                    stmt.executeUpdate("UPDATE USER SET CUST_EMAIL = CONCAT('client_', UID, '@portfolio.com') WHERE CUST_EMAIL IS NULL");
+                } catch (Exception ex) {}
+            }
+            try {
+                stmt.executeQuery("SELECT PASSWORD FROM USER LIMIT 1");
+            } catch (Exception e) {
+                try {
+                    stmt.executeUpdate("ALTER TABLE USER ADD COLUMN PASSWORD VARCHAR(255) DEFAULT 'a01649699f5501489183d6c9b83d503699fe17329dcfc733f52d83aa58befcfc'");
+                } catch (Exception ex) {}
+            }
+        } catch (Exception e) {}
+    }
+%>
 
 <%
-    String userId = request.getParameter("userId");
-    String username = request.getParameter("username");
-    String userIdError = "";
-    String usernameError = "";
+    String email = request.getParameter("email");
+    String password = request.getParameter("password");
+    String emailError = "";
+    String passwordError = "";
+    String generalError = "";
     boolean loginSuccess = false;
 
-    if (userId != null && username != null) {
+    if (email != null && password != null) {
+        email = email.trim();
+        password = password.trim();
+
         Connection conn = null;
         PreparedStatement pstmt = null;
         ResultSet rs = null;
@@ -21,44 +67,34 @@
             Class.forName("com.mysql.cj.jdbc.Driver");
             conn = DriverManager.getConnection(url, user, pass);
 
-            // Use a prepared statement to prevent SQL injection
-            String sql = "SELECT USERNAME FROM USER WHERE UID = ? AND USERNAME = ?";
+            ensureCustomerSchema(conn);
+
+            String hashedInput = hashPassword(password);
+
+            // Authenticate by CUST_EMAIL and SHA-256 HASHED PASSWORD
+            String sql = "SELECT UID, CUST_EMAIL, USERNAME, PASSWORD FROM USER WHERE LOWER(CUST_EMAIL) = LOWER(?)";
             pstmt = conn.prepareStatement(sql);
-            pstmt.setString(1, userId);
-            pstmt.setString(2, username);
+            pstmt.setString(1, email);
             rs = pstmt.executeQuery();
 
             if (rs.next()) {
-                // Login successful: Set session and redirect
-                session.setAttribute("loggedInUserName", rs.getString("USERNAME")); // Store username in session
-                session.setAttribute("loggedInUserId", userId);
-                loginSuccess = true;
+                String storedHash = rs.getString("PASSWORD");
+                if (storedHash != null && storedHash.equalsIgnoreCase(hashedInput)) {
+                    // Password matches
+                    session.setAttribute("loggedInUserId", rs.getInt("UID"));
+                    session.setAttribute("loggedInUserEmail", rs.getString("CUST_EMAIL"));
+                    session.setAttribute("loggedInUserName", rs.getString("USERNAME"));
+                    loginSuccess = true;
+                } else {
+                    passwordError = "Incorrect password. Please verify and try again.";
+                }
             } else {
-                // Login failed: Set error message
-                // IMPORTANT:  Set individual error messages
-                sql = "SELECT USERNAME FROM USER WHERE UID = ?";
-                pstmt = conn.prepareStatement(sql);
-                pstmt.setString(1, userId);
-                rs = pstmt.executeQuery();
-                if (!rs.next()) {
-                    userIdError = "Invalid User ID. Please try again.";
-                }
-
-                sql = "SELECT USERNAME FROM USER WHERE USERNAME = ?";
-                pstmt = conn.prepareStatement(sql);
-                pstmt.setString(1, username);
-                rs = pstmt.executeQuery();
-                if(!rs.next()) {
-                    usernameError = "Invalid Username. Please try again.";
-                }
-
-
+                emailError = "No client account found registered with this email.";
             }
         } catch (Exception e) {
             e.printStackTrace();
-            userIdError = "An error occurred: " + e.getMessage(); // Set to a field.
+            generalError = "Database Connection Error: " + e.getMessage();
         } finally {
-            // Close database resources
             try {
                 if (rs != null) rs.close();
                 if (pstmt != null) pstmt.close();
@@ -70,162 +106,151 @@
     }
 
     if (loginSuccess) {
-        // Redirect to a success page (e.g., dashboard)
         response.sendRedirect("customer-dashboard.jsp");
-    } else {
-        // Include the original login form page and display the error
+        return;
+    }
 %>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Login - Financial Portfolio Manager</title>
-<link rel="stylesheet"
-	href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-<link
-	href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap"
-	rel="stylesheet">
-<style>
-body {
-	font-family: 'Poppins', sans-serif;
-	margin: 0;
-	padding: 0;
-	background-color: #f2f2f2;
-	height: 100vh;
-	display: flex;
-	justify-content: center;
-	align-items: center;
-}
-
-.form-container {
-	padding: 50px 20px;
-	text-align: center;
-	max-width: 600px;
-	width: 100%;
-	background-color: white;
-	border-radius: 10px;
-	box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-}
-
-.form-container h2 {
-	font-size: 2rem;
-	color: #003366;
-	margin-bottom: 30px;
-}
-
-.form-control {
-	border-radius: 10px;
-	padding: 15px;
-	margin-bottom: 15px;
-	border: 1px solid #ccc;
-	transition: border-color 0.3s;
-}
-
-.form-control:focus {
-	border-color: #00bfff;
-	box-shadow: 0 0 5px rgba(0, 191, 255, 0.5);
-}
-
-.form-btn {
-	background-color: #00bfff;
-	border: none;
-	padding: 15px 30px;
-	color: white;
-	font-size: 1rem;
-	border-radius: 5px;
-	transition: background-color 0.3s;
-}
-
-.form-btn:hover {
-	background-color: #009acd;
-}
-
-.error {
-	color: red;
-	font-size: 0.9rem;
-}
-
-.invalid {
-	border: 2px solid red !important;
-}
-
-.invalid-feedback {
-	display: block;
-	font-size: 0.8rem;
-	color: red;
-}
-</style>
-<script>
-    function validateForm() {
-        let userId = document.getElementById("userId");
-        let username = document.getElementById("username");
-        let isValid = true;
-
-        // Clear previous errors
-        document.getElementById("userId-error").innerHTML = "";
-        document.getElementById("username-error").innerHTML = "";
-        userId.classList.remove("invalid");
-        username.classList.remove("invalid");
-
-        // Validate User ID (must not be empty and only digits)
-        if (userId.value.trim() === "") {
-            userId.classList.add("invalid");
-            document.getElementById("userId-error").innerHTML = "Please enter your User ID.";
-            isValid = false;
-        } else if (!/^\d+$/.test(userId.value.trim())) {
-            userId.classList.add("invalid");
-            document.getElementById("userId-error").innerHTML = "User ID must be a number.";
-            isValid = false;
-        }
-
-        // Validate Username (must not be empty and only alphabetic characters)
-        if (username.value.trim() === "") {
-            username.classList.add("invalid");
-            document.getElementById("username-error").innerHTML = "Please enter your username.";
-            isValid = false;
-        } else if (!/^[A-Za-z\s]+$/.test(username.value.trim())) {
-            username.classList.add("invalid");
-            document.getElementById("username-error").innerHTML = "Username must contain only letters.";
-            isValid = false;
-        }
-
-        return isValid;
-    }
-</script>
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client Sign In - Financial Portfolio Management</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="Resources/fintech-theme.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
-<body>
+<body class="fin-auth-container">
 
-	<section class="form-container">
-		<h2>Login to Your Account</h2>
-		<form onsubmit="return validateForm()" method="POST">
-			<div class="form-group">
-				<input type="text"
-					class="form-control <%= !userIdError.isEmpty() ? "invalid" : "" %>"
-					id="userId" name="userId" placeholder="User ID"
-					value="<%= userId != null ? userId : "" %>">
-				<div id="userId-error" class="invalid-feedback"><%= userIdError %></div>
-			</div>
-			<div class="form-group">
-				<input type="text"
-					class="form-control <%= !usernameError.isEmpty() ? "invalid" : "" %>"
-					id="username" name="username" placeholder="Username"
-					value="<%= username != null ? username : "" %>">
-				<div id="username-error" class="invalid-feedback"><%= usernameError %></div>
-			</div>
-			<button type="submit" class="form-btn">Login</button>
+    <div class="fin-auth-card">
+        <!-- Logo & Header -->
+        <div class="text-center mb-4">
+            <a href="index.jsp" class="fin-brand justify-content-center mb-3">
+                <div class="fin-brand-logo">
+                    <i class="bi bi-graph-up-arrow"></i>
+                </div>
+                <div class="fin-brand-name text-start">
+                    <span class="text-dark">FinManage</span>
+                    <span class="fin-brand-sub" style="color: #0284c7;">WEALTH CLIENT PORTAL</span>
+                </div>
+            </a>
+            <h4 class="fw-bold text-dark mt-2">Welcome Back</h4>
+            <p class="text-muted small">Sign in using your registered email and secure password.</p>
+        </div>
 
-		</form>
-		<p class="mt-3">
-			Don't have an account? <a href="register.jsp" style="color: #00bfff;">Sign
-				up</a>
-		</p>
-	</section>
+        <% if (!generalError.isEmpty()) { %>
+            <div class="alert alert-danger py-2 small mb-3">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i> <%= generalError %>
+            </div>
+        <% } %>
 
-	<script
-		src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+        <!-- Login Form -->
+        <form id="clientLoginForm" action="login.jsp" method="POST" novalidate>
+            <div class="mb-3">
+                <label for="email" class="form-label fw-semibold small text-secondary">
+                    <i class="bi bi-envelope-at text-primary me-1"></i> Email Address
+                </label>
+                <div class="input-group <%= !emailError.isEmpty() ? "is-invalid" : "" %>">
+                    <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-envelope"></i></span>
+                    <input type="email" id="email" name="email" 
+                           class="form-control fin-input border-start-0 <%= !emailError.isEmpty() ? "is-invalid" : "" %>" 
+                           placeholder="e.g. ravi.kumar@portfolio.com" 
+                           value="<%= (email != null) ? email : "" %>" required>
+                </div>
+                <% if (!emailError.isEmpty()) { %>
+                    <div class="fin-field-error">
+                        <i class="bi bi-exclamation-circle-fill"></i> <%= emailError %>
+                    </div>
+                <% } %>
+            </div>
+
+            <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <label for="password" class="form-label fw-semibold small text-secondary mb-0">
+                        <i class="bi bi-shield-lock text-primary me-1"></i> Password
+                    </label>
+                </div>
+                <div class="input-group <%= !passwordError.isEmpty() ? "is-invalid" : "" %>">
+                    <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-key"></i></span>
+                    <input type="password" id="password" name="password" 
+                           class="form-control fin-input border-start-0 <%= !passwordError.isEmpty() ? "is-invalid" : "" %>" 
+                           placeholder="••••••••" required>
+                </div>
+                <% if (!passwordError.isEmpty()) { %>
+                    <div class="fin-field-error">
+                        <i class="bi bi-exclamation-circle-fill"></i> <%= passwordError %>
+                    </div>
+                <% } %>
+            </div>
+
+            <button type="submit" id="submitBtn" class="fin-btn fin-btn-primary w-100 py-3 mt-3">
+                <i class="bi bi-box-arrow-in-right me-1"></i> Access Portfolio Terminal
+            </button>
+        </form>
+
+        <!-- Links Footer -->
+        <div class="text-center mt-4 pt-3 border-top">
+            <p class="text-muted small mb-2">
+                New investor? <a href="register.jsp" class="fw-bold text-primary text-decoration-none">Open an Account</a>
+            </p>
+            <div class="d-flex justify-content-center gap-3 small">
+                <a href="index.jsp" class="text-secondary text-decoration-none"><i class="bi bi-house me-1"></i>Home</a>
+                <span class="text-muted">•</span>
+                <a href="admin-login.jsp" class="text-warning text-decoration-none"><i class="bi bi-shield-lock me-1"></i>Admin Portal</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="Resources/fintech-charts.js"></script>
+    <script>
+        const form = document.getElementById('clientLoginForm');
+        const emailInput = document.getElementById('email');
+        const pwdInput = document.getElementById('password');
+
+        FinTechApp.bindLiveValidation(form);
+
+        function validateForm() {
+            let isValid = true;
+            FinTechApp.clearError(emailInput);
+            FinTechApp.clearError(pwdInput);
+
+            const emailVal = emailInput.value.trim();
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailVal) {
+                FinTechApp.showError(emailInput, 'Email address is required.');
+                isValid = false;
+            } else if (!emailRegex.test(emailVal)) {
+                FinTechApp.showError(emailInput, 'Please enter a valid email address (e.g., name@domain.com).');
+                isValid = false;
+            }
+
+            const pwdVal = pwdInput.value;
+            if (!pwdVal) {
+                FinTechApp.showError(pwdInput, 'Password is required.');
+                isValid = false;
+            }
+
+            return isValid;
+        }
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (validateForm()) {
+                FinTechApp.confirmAction(
+                    'Are you sure?',
+                    'Do you want to sign in with ' + emailInput.value.trim() + '?',
+                    'Yes, Sign In',
+                    function () {
+                        form.submit();
+                    },
+                    'question'
+                );
+            }
+        });
+    </script>
 </body>
 </html>
-<%
-    }
-%>
